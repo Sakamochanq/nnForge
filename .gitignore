@@ -181,5 +181,4 @@ cython_debug/
 .cursorindexingignore
 
 # myenv
-runs/
 src/dataset
