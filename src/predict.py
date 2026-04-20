@@ -6,8 +6,8 @@ if __name__ == '__main__':
     while True:
     
         # 任意のものを使用する
-        trained_model = input("Trained Model ❯  ")
-        img = input("Image ❯ ")
+        trained_model = input("\nTrained Model ❯  ")
+        img = input("\nImage ❯ ")
 
         model = YOLO(trained_model)
 

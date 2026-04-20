@@ -12,12 +12,12 @@ else:
 
 if __name__ == '__main__':
     
-    # -cls は分類用モデル
-    model = YOLO('yolov8n-cls.pt')
+    # v26m-cls は分類用標準モデル
+    model = YOLO('yolov26m-cls.pt')
 
     results = model.train(
         data="./dataset/images/train",
-        epochs=100,
+        epochs=150,
         imgsz=640,
         device=device
     )
