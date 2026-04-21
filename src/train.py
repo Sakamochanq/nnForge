@@ -1,5 +1,4 @@
 import torch
-
 from ultralytics import YOLO
 
 
@@ -8,15 +7,16 @@ if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
-
-
+    
 if __name__ == '__main__':
     
-    # v26m-cls は分類用標準モデル
-    model = YOLO('yolov26m-cls.pt')
+    # v8m-cls は分類用標準モデル（自動ダウンロード）
+    model = YOLO('yolov8m-cls.pt')
+    
+    print(f"Using device: {device}")
 
     results = model.train(
-        data="./dataset/images/train",
+        data='./dataset/images/',
         epochs=150,
         imgsz=640,
         device=device
