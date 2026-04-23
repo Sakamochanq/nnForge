@@ -52,8 +52,7 @@ python -venv .venv
 
 <br>
 
-各ブランチごとにライセンスを付与してます。<br>
-詳細は各ブランチの `LICENSE` ファイルを参照してください。
+Release under the [MIT](./LICENSE) License.
 
 <br>
 <br>
