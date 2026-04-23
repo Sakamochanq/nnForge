@@ -1,0 +1,113 @@
+import torch
+import torch.nn as nn
+
+import torch.optim as optim
+from assets.config import config
+
+
+class Train:
+    # 初期化
+    def __init__(self, model, train_loader, val_loader):
+        
+        # GPUが利用可能であれば使用する。それ以外はCPU
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
+        
+        # GPU/CPUにモデルを送る
+        self.model = model.to(self.device)
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+
+        # 損失関数（どれだけ間違ったか）
+        self.criterion = nn.CrossEntropyLoss()
+        self.optim = optim.Adam(self.model.parameters(), lr=config.LR)
+
+    # 学習
+    def train(self):
+        for epoch in range(config.EPOCHS):
+            
+            # 学習モード ON
+            self.model.train()
+
+            # 正解枚数
+            correct = 0
+            
+            # 総枚数
+            total = 0
+            
+            # 損失の合計（間違いの合計）
+            loss_sum = 0
+
+            
+            for images, labels in self.train_loader:
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                # 勾配降下法の計算を正しく行うため、モデル内のパラメータの勾配を初期化
+                # 勾配降下法は、機械学習モデルの誤差（損失）を最小にするパラメータ（重み）を見つけるための反復最適化手法
+                # https://www.ibm.com/jp-ja/think/topics/gradient-descent
+                self.optim.zero_grad()
+
+                # 予測の出力
+                outputs = self.model(images)
+                
+                # 出力と正解ラベルの損失を計算                
+                loss = self.criterion(outputs, labels)
+                
+                # 勾配を計算
+                loss.backward()
+                self.optim.step()
+
+                # 損失の加算
+                loss_sum = loss_sum + loss.item()
+
+                # 予測の最大値を取得
+                pred = torch.max(outputs, 1)
+                
+                # 総枚数の加算
+                total += labels.size(0)
+                
+                # 正解枚数の加算
+                correct += (pred == labels).sum().item()
+
+            # 正解率の計算（正解枚数 / 総枚数）
+            train_acc = 100 * correct / total
+            
+            # 検証の正解率の計算（validate関数）
+            val_acc = self.validate()
+
+            # 結果の出力
+            print( f"学習回数 {epoch+1}/{config.EPOCHS} | " f"損失 {loss_sum:.4f} | " f"正解率 {train_acc:.2f}% | " f"正解率（検証） {val_acc:.2f}%" )
+
+        # 学習モデルの保存
+        # sate_dict()でモデルの重みを保存
+        torch.save(self.model.state_dict(), config.MODEL_PATH)
+
+        #出力する文字を緑にして
+        print("\033[92m" + "Model Saved Successfully" + "\033[0m")
+
+
+    # 検証
+    def validate(self):
+        
+        # 検証モード ON
+        self.model.eval()
+
+        correct = 0
+        total = 0
+
+        # 勾配を計算しない
+        with torch.no_grad():
+            for images, labels in self.val_loader:
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                outputs = self.model(images)
+                pred = torch.max(outputs, 1)
+
+                total += labels.size(0)
+                correct += (pred == labels).sum().item()
+                
+        # 検証の正解率の計算（正解枚数 / 総枚数）
+        return 100 * correct / total
