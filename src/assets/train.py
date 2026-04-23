@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
-
 import torch.optim as optim
+
 from assets.config import config
+from tqdm import tqdm
 
 
 class Train:
@@ -10,9 +11,10 @@ class Train:
     def __init__(self, model, train_loader, val_loader):
         
         # GPUが利用可能であれば使用する。それ以外はCPU
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        # 使用デバイスの確認
+        print(f"\033[96m\nUsing device: {self.device}\033[0m")
         
         # GPU/CPUにモデルを送る
         self.model = model.to(self.device)
@@ -21,12 +23,11 @@ class Train:
 
         # 損失関数（どれだけ間違ったか）
         self.criterion = nn.CrossEntropyLoss()
-        self.optim = optim.Adam(self.model.parameters(), lr=config.LR)
+        self.optim = optim.Adam(self.model.parameters(), lr=config.learning_rate)
 
     # 学習
     def train(self):
-        for epoch in range(config.EPOCHS):
-            
+        for epoch in range(config.epochs):
             # 学習モード ON
             self.model.train()
 
@@ -38,6 +39,11 @@ class Train:
             
             # 損失の合計（間違いの合計）
             loss_sum = 0
+            
+            # 進捗表示
+            # print('')
+            # tqdmの文字を少し変わった色にできる？
+            # loop = tqdm(self.train_loader, desc=f"\033[94mEpoch {epoch+1}/{config.epochs}\033[0m", unit="batch")
 
             
             for images, labels in self.train_loader:
@@ -63,13 +69,16 @@ class Train:
                 loss_sum = loss_sum + loss.item()
 
                 # 予測の最大値を取得
-                pred = torch.max(outputs, 1)
+                _, pred = torch.max(outputs, 1)
                 
                 # 総枚数の加算
                 total += labels.size(0)
                 
                 # 正解枚数の加算
                 correct += (pred == labels).sum().item()
+                
+                # 更新
+                # loop.set_postfix(loss=loss_sum / (total / config.batch_size), accuracy=100 * correct / total)
 
             # 正解率の計算（正解枚数 / 総枚数）
             train_acc = 100 * correct / total
@@ -78,14 +87,14 @@ class Train:
             val_acc = self.validate()
 
             # 結果の出力
-            print( f"学習回数 {epoch+1}/{config.EPOCHS} | " f"損失 {loss_sum:.4f} | " f"正解率 {train_acc:.2f}% | " f"正解率（検証） {val_acc:.2f}%" )
+            print(f"\n学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.2f}% | " f"検証正解率 {val_acc:.2f}% \n" )
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
-        torch.save(self.model.state_dict(), config.MODEL_PATH)
+        torch.save(self.model.state_dict(), config.model)
 
         #出力する文字を緑にして
-        print("\033[92m" + "Model Saved Successfully" + "\033[0m")
+        print(f"Model Saved " + "\033[92m" + "Successfully" + "\033[0m \n")
 
 
     # 検証
@@ -104,7 +113,7 @@ class Train:
                 labels = labels.to(self.device)
 
                 outputs = self.model(images)
-                pred = torch.max(outputs, 1)
+                _, pred = torch.max(outputs, 1)
 
                 total += labels.size(0)
                 correct += (pred == labels).sum().item()

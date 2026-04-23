@@ -7,6 +7,27 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 from assets.config import config
 
+# class config:
+    
+#     # 学習させるデータセット
+#     dataset = "dataset/images/SDNET2018";
+    
+#     #画像サイズ
+#     img_size = 224;
+    
+#     # バッチサイズ
+#     batch_size = 32;
+    
+#     # 学習回数
+#     epochs = 10;
+    
+#     # 学習率
+#     learning_rate = 0.001;
+    
+#     #学習モデルの保存先
+#     model = "model.pth";
+# この変数に対応させてください
+
 
 def _get_config_attr(*names, default=None):
     for name in names:
@@ -123,4 +144,4 @@ class DataManager:
             shuffle=False,
         )
 
-        return train_loader, val_loader, test_loader, dataset.classes
+        return train_loader, val_loader, dataset.classes

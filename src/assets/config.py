@@ -1,7 +1,7 @@
 class config:
     
     # 学習させるデータセット
-    dataset = "dataset/images/SDNET2018";
+    dataset = "";
     
     #画像サイズ
     img_size = 224;
@@ -10,7 +10,7 @@ class config:
     batch_size = 32;
     
     # 学習回数
-    epochs = 10;
+    epochs = 1;
     
     # 学習率
     learning_rate = 0.001;
