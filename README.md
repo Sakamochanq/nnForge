@@ -2,90 +2,67 @@
 
 <br>
 
-### 開発環境
+開発環境ごとに `Branch` を分けています。<br>
+以下のリンクからジャンプできます。
 
 <br>
 
-* Python 3.14.14
+| Branch | description |
+|-----|-----|
+| [master](https://github.com/Sakamochanq/DeepLearning-test/tree/master) | 概要およびドキュメント |
+| [tensorflow](https://github.com/Sakamochanq/DeepLearning-test/tree/tensorflow) | TensorFlow用の開発環境 |
+| [yolov8](https://github.com/Sakamochanq/DeepLearning-test/tree/yolov8) | YOLOv8用の開発環境 |
+
+
+<br>
+<br>
+
+## Usage
 
 <br>
 
-* ローカルに仮想環境の構築
+* clone
 
-    `.venv` は任意のものを使用する
-
-<br>
-
-requirements.txt
-
+```bash
+git clone <repository URL>
+cd <repository name>
 ```
-torch
-ultralytics
-numpy
-matplotlib
+
+<br>
+
+* 開発環境のBranchに切り替え
+
+```bash
+git checkout <Branch name>
+```
+
+<br>
+
+* 開発環境のセットアップ
+
+```bash
+python -venv .venv
+.venv\Scripts\activate
 ```
 
 <br>
 <br>
 
-### 実行方法
+## License
 
 <br>
 
-1. 仮想環境の構築
-
-    ```
-    python -m venv .venv
-    ```
-
-<br>
-
-2. 仮想環境の有効化
-
-    - Windows
-
-        ```
-        .venv\Scripts\activate
-        ```
-
-    - macOS/Linux
-
-        ```
-        source .venv/bin/activate
-        ```
-
-<br>
-
-3. 実行
-
-    ```
-    #dataset内の画像を学習させる
-    py train.py
-    ```
-
-    ```
-    #学習したモデルから推論する
-    py predict.py
-    ```
-
-<br>
-<br>
-<hr>
-<br>
-<br>
-
-### License
-
-Release under the [MIT](./LICENSE) License.
+各ブランチごとにライセンスを付与してます。<br>
+詳細は各ブランチの `LICENSE` ファイルを参照してください。
 
 <br>
 <br>
 
-### Author
+## Author
+
+<br>
 
 * [Sakamochanq](https://github.com/Sakamochanq)
-    * [Github Copilot](https://github.com/features/copilot)
-        * [Claude Haiku 4.5](https://claude.ai/)
 
 <br>
 <br>
