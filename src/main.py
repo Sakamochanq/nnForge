@@ -15,5 +15,5 @@ trainer = Train(model, train_loader, val_loader)
 trainer.train()
 
 # 予測
-predict = Predict(model, classes)
-predict.predict("test.jpg")
+predictor = Predict(model, classes)
+predictor.predict("test.jpg")

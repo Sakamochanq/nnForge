@@ -41,12 +41,10 @@ class Train:
             loss_sum = 0
             
             # 進捗表示
-            # print('')
-            # tqdmの文字を少し変わった色にできる？
-            # loop = tqdm(self.train_loader, desc=f"\033[94mEpoch {epoch+1}/{config.epochs}\033[0m", unit="batch")
-
+            print('')
+            loop = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{config.epochs}", unit="batch", colour="blue")
             
-            for images, labels in self.train_loader:
+            for images, labels in loop:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
@@ -78,16 +76,16 @@ class Train:
                 correct += (pred == labels).sum().item()
                 
                 # 更新
-                # loop.set_postfix(loss=loss_sum / (total / config.batch_size), accuracy=100 * correct / total)
+                loop.set_postfix(loss=f"{loss_sum / (total / config.batch_size):.4f}", accuracy=f"{100 * correct / total:.4f}%")
 
-            # 正解率の計算（正解枚数 / 総枚数）
-            train_acc = 100 * correct / total
+                # 正解率の計算（正解枚数 / 総枚数）
+                train_acc = 100 * correct / total
             
             # 検証の正解率の計算（validate関数）
             val_acc = self.validate()
 
             # 結果の出力
-            print(f"\n学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.2f}% | " f"検証正解率 {val_acc:.2f}% \n" )
+            print(f"\n学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" )
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
