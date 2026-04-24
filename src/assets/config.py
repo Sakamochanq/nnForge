@@ -1,7 +1,7 @@
 class config:
     
     # 学習させるデータセット
-    dataset = "";
+    dataset = "D:\\Enviroments\\DeepLearning-test\\src\\dataset\\images\\SDNET2018\\W";
     
     #画像サイズ
     img_size = 224;

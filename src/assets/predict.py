@@ -4,7 +4,7 @@ from torchvision import transforms
 from config import Config
 
 
-class Predictor:
+class Predict:
     def __init__(self, model, classes):
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
