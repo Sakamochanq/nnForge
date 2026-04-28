@@ -10,7 +10,7 @@ class config:
     batch_size = 32;
     
     # 学習回数
-    epochs = 1;
+    epochs = 100;
     
     # 学習率
     learning_rate = 0.001;
