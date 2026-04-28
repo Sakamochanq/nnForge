@@ -30,4 +30,4 @@ class Predict:
             _, pred = torch.max(output, 1)
 
         result = self.classes[pred.item()]
-        print("Prediction:", result)
+        print("\nPrediction:", result)

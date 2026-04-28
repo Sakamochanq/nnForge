@@ -14,6 +14,10 @@ model = Model().build()
 trainer = Train(model, train_loader, val_loader)
 trainer.train()
 
+
+print("\033[92m\nAll training completed.\n\033[0m")
+input()
+
 # 予測
-predictor = Predict(model, classes)
-predictor.predict("test.jpg")
+# predictor = Predict(model, classes)
+# predictor.predict("test.jpg") 

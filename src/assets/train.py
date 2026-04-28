@@ -14,7 +14,7 @@ class Train:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # 使用デバイスの確認
-        print(f"\033[96m\nUsing device: {self.device}\033[0m")
+        print(f"\033[92m\nUsing device: {self.device}\033[0m")
         
         # GPU/CPUにモデルを送る
         self.model = model.to(self.device)
@@ -85,7 +85,7 @@ class Train:
             val_acc = self.validate()
 
             # 結果の出力
-            print(f"\n学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" )
+            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
