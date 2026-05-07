@@ -6,13 +6,12 @@ from assets.predict import Predict
 
 if __name__ == "__main__":
     
-    while True:
-        data = DataManager()
-        train_loader, val_loader, classes = data.load()
+    data = DataManager()
+    train_loader, val_loader, classes = data.load()
         
-        model = Model().build()
+    model = Model().build()
         
-        predictor = Predict(model, classes)
+    predictor = Predict(model, classes)
         
-        image = input(' ❯ ')
-        predictor.predict(image)
+    image = input('\n ❯ ')
+    predictor.predict(image)

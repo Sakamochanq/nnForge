@@ -25,9 +25,19 @@ class Predict:
         image = self.transform(image).unsqueeze(0)
         image = image.to(self.device)
 
+        # 勾配を計算しない
         with torch.no_grad():
+            # 予測
             output = self.model(image)
-            _, pred = torch.max(output, 1)
+            # 確率の計算
+            probabilities = torch.softmax(output, dim=1)
+            _, pred = torch.max(probabilities, 1)
 
         result = self.classes[pred.item()]
-        print("\nPrediction:", result)
+        
+        
+        print(f"\nPredicted: {result}\n")
+        for idx, class_name in enumerate(self.classes):
+            percentage = probabilities[0][idx].item() * 100
+            print(f"{class_name}: {percentage:.2f}%")
+        print("")
