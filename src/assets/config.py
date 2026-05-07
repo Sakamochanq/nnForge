@@ -10,10 +10,10 @@ class config:
     batch_size = 32;
     
     # 学習回数
-    epochs = 100;
+    epochs = 200;
     
     # 学習率
     learning_rate = 0.001;
     
     #学習モデルの保存先
-    model = "model.pth";
+    model = "model（200-epochs）.pth";

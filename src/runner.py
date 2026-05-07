@@ -1,17 +1,20 @@
+# クラスのインポート
 from xml.parsers.expat import model
 from assets.dataset import DataManager
 from assets.model import Model
 from assets.predict import Predict
 
 
-if __name__ == "__main__":
+# データを読み込む
+data = DataManager()
+train_loader, val_loader, classes = data.load()
     
-    data = DataManager()
-    train_loader, val_loader, classes = data.load()
-        
-    model = Model().build()
-        
-    predictor = Predict(model, classes)
-        
-    image = input('\n ❯ ')
-    predictor.predict(image)
+# モデルの作成
+model = Model().build()
+    
+# Predictorの定義
+predictor = Predict(model, classes)
+    
+# 任意の画像から推論
+image = input('\n ❯ ')
+predictor.predict(image)
