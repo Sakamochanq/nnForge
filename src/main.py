@@ -16,8 +16,3 @@ trainer.train()
 
 
 print("\033[92m\nAll training completed.\n\033[0m")
-input()
-
-# 予測
-# predictor = Predict(model, classes)
-# predictor.predict("test.jpg") 
