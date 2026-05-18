@@ -16,4 +16,4 @@ class config:
     learning_rate = 0.001;
     
     #学習モデルの保存先
-    model = "model（200-epochs）.pth";
+    model = "Model.pth";
