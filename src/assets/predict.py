@@ -20,10 +20,7 @@ class Predict:
 
         self.classes = classes
 
-        self.transform = transforms.Compose([
-            transforms.Resize((config.img_size, config.img_size)),
-            transforms.ToTensor()
-        ])
+        self.transform = transforms.Compose([transforms.Resize((config.img_size, config.img_size)), transforms.ToTensor()])
 
     def predict(self, image_path):
         image = Image.open(image_path).convert("RGB")

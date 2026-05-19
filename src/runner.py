@@ -47,13 +47,29 @@ if use_gradcam.lower() == 'y':
     # BGR→RGBに変換（OpenCVはBGR)
     overlay_rgb = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
     
-    # matplotlibで表示
-    plt.figure(figsize=(5, 5))
-    plt.imshow(overlay_rgb)
+    plt.figure(figsize=(10, 7))
+    # 元の画像
+    plt.subplot(1, 2, 1)
+    original_img = cv2.imread(image)
+    original_img_rgb = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
+    plt.imshow(original_img)
     plt.title(image.split("\\")[-1])
-    plt.axis('equal')
+    
+    # Grad-CAM画像
+    plt.subplot(1, 2, 2)
+    plt.imshow(overlay_rgb)
+    plt.title(f"Result: {predicted_class}")
     plt.tight_layout()
+    
     plt.show()
+    
+    # matplotlibで表示
+    # plt.figure(figsize=(5, 5))
+    # plt.imshow(overlay_rgb)
+    # plt.title(image.split("\\")[-1])
+    # plt.axis('equal')
+    # plt.tight_layout()
+    # plt.show()
     
 else:
     print("\033[94mGrad-CAM visualization skipped.\033[0m")
