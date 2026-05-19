@@ -2,4 +2,3 @@ dataset/
 __pycache__/
 *.pyc
 *.pth
-./src/assets/config.py
