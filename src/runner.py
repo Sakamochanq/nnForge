@@ -53,12 +53,14 @@ if use_gradcam.lower() == 'y':
     original_img = cv2.imread(image)
     original_img_rgb = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
     plt.imshow(original_img)
+    plt.axis('off')
     plt.title(image.split("\\")[-1])
     
     # Grad-CAM画像
     plt.subplot(1, 2, 2)
     plt.imshow(overlay_rgb)
     plt.title(f"Result: {predicted_class}")
+    plt.axis('off')
     plt.tight_layout()
     
     plt.show()
