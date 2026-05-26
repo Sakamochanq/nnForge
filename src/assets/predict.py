@@ -31,17 +31,30 @@ class Predict:
         with torch.no_grad():
             # 予測
             output = self.model(image)
+            
+            #print(f"\n\033[92m[Debug]\033[0m \033[94mShape: {output.shape}, Logits: {output}\033[0m")
+            
             # 確率の計算
-            probabilities = torch.softmax(output, dim=1)
-            _, pred = torch.max(probabilities, 1)
+            prob = torch.softmax(output, dim=1)
+            
+            #print(f"\033[92m[Debug]\033[0m \033[94mSoftmax: {prob}\033[0m")
+            
+            _, pred = torch.max(prob, 1)
+            
+            #print(f"\033[92m[Debug]\033[0m \033[94mpred: {pred}, pred.item(): {pred.item()}\033[0m")
 
         result = self.classes[pred.item()]
         
         
         print(f"\nPredicted: {result}\n")
         for idx, class_name in enumerate(self.classes):
-            percentage = probabilities[0][idx].item() * 100
-            print(f"{class_name}: {percentage:.2f}%")
+            percent = prob[0][idx].item() * 100
+            
+            #print(f"\033[92m[Debug]\033[0m \033[94mindex: {idx}, Class: {class_name}, prob: {prob[0][idx].item()}\033[0m")
+            #print()
+            
+            print(f"{class_name}: {percent:.2f}%")
+            #print()
         print("")
 
 
