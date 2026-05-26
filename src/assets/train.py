@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import matplotlib.pyplot as plt
 
 from assets.config import config
 from tqdm import tqdm
@@ -24,6 +25,10 @@ class Train:
         # 損失関数（どれだけ間違ったか）
         self.criterion = nn.CrossEntropyLoss()
         self.optim = optim.Adam(self.model.parameters(), lr=config.learning_rate)
+        
+        # 学習曲線用のhistory
+        self.train_acc_history = []
+        self.val_acc_history = []
 
     # 学習
     def train(self):
@@ -83,6 +88,10 @@ class Train:
             
             # 検証の正解率の計算（validate関数）
             val_acc = self.validate()
+            
+            # 学習曲線用にhistoryに記録
+            self.train_acc_history.append(train_acc)
+            self.val_acc_history.append(val_acc)
 
             # 結果の出力
             print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
@@ -93,6 +102,9 @@ class Train:
 
         #出力する文字を緑にして
         print(f"Model Saved " + "\033[92m" + "Successfully" + "\033[0m \n")
+        
+        # 学習曲線の可視化
+        self.learning_curve()
 
 
     # 検証
@@ -118,3 +130,27 @@ class Train:
                 
         # 検証の正解率の計算（正解枚数 / 総枚数）
         return 100 * correct / total
+    
+    # 学習曲線の可視化
+    def learning_curve(self):
+        # X軸：学習回数（エポック数）
+        # Y軸：正解率（%）
+        # 過学習と学習不足を可視化
+        
+        epochs = range(1, len(self.train_acc_history) + 1)
+        
+        plt.figure(figsize=(10, 6))
+        plt.plot(epochs, self.train_acc_history, 'b-', label='訓練精度', marker='o', linewidth=2)
+        plt.plot(epochs, self.val_acc_history, 'r-', label='検証精度', marker='s', linewidth=2)
+        
+        plt.xlabel('学習回数（Epoch）', fontsize=12)
+        plt.ylabel('正解率（%）', fontsize=12)
+        plt.title('学習曲線', fontsize=14, fontweight='bold')
+        plt.legend(fontsize=11)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        
+        # ./Curve.png として保存
+        plt.savefig('Curve.png', dpi=300, bbox_inches='tight')
+        print(f"Curve.png saved " + "\033[92m" + "Successfully" + "\033[0m \n")
+        plt.close()
