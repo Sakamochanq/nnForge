@@ -15,4 +15,4 @@ trainer = Train(model, train_loader, val_loader)
 trainer.train()
 
 
-print("\033[92m\nAll training completed.\n\033[0m")
+print("\033[92mAll training completed.\n\033[0m")
