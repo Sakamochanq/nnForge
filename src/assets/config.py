@@ -1,7 +1,7 @@
 class config:
     
     # 学習させるデータセット
-    dataset = "C:\\Enviroments\\nnForge\\src\\dataset\\images\\SDNET2018\\W";
+    dataset = "D:\\Enviroments\\nnForge\\src\\dataset\\images\\SDNET2018\\W";
     
     #画像サイズ
     img_size = 224;
