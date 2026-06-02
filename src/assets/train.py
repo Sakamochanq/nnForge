@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator, MultipleLocator
 
 from assets.config import config
 from tqdm import tqdm
@@ -146,11 +145,6 @@ class Train:
         plt.title('gakusyu kyokusen')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        
-        # X軸を整数に設定し、1ごとにグリッドを表示
-        ax = plt.gca()
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.xaxis.set_major_locator(MultipleLocator(1))
         
         # ./Curve.png として保存
         plt.savefig('Curve.png', dpi=300, bbox_inches='tight')
