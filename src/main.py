@@ -1,7 +1,6 @@
 from assets.dataset import DataManager
 from assets.model import Model
 from assets.train import Train
-from assets.predict import Predict
 
 # データを読み込む（config.py）
 data = DataManager()

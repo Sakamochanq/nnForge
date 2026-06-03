@@ -98,7 +98,8 @@ class Train:
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
-        torch.save(self.model.state_dict(), config.model)
+        model_path = f"{config.model_dir}Model-{config.epochs}-{config.batch_size}.pth"
+        torch.save(self.model.state_dict(), model_path)
 
         #出力する文字を緑にして
         print(f"Model Saved " + "\033[92m" + "Successfully" + "\033[0m \n")
@@ -142,11 +143,10 @@ class Train:
         
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy (%)')
-        plt.title('gakusyu kyokusen')
         plt.legend()
         plt.grid(True, alpha=0.3)
         
-        # ./Curve.png として保存
-        plt.savefig('Curve.png', dpi=300, bbox_inches='tight')
-        print(f"Curve.png saved " + "\033[92m" + "Successfully" + "\033[0m \n")
+        # ./Curve-<epoch>-<batch_size>.png として保存
+        plt.savefig(f'Curve-{config.epochs}-{config.batch_size}.png', dpi=300, bbox_inches='tight')
+        print(f"Curve-{config.epochs}-{config.batch_size}.png saved " + "\033[92m" + "Successfully" + "\033[0m \n")
         plt.close()
