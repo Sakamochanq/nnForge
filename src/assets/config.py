@@ -15,5 +15,8 @@ class config:
     # 学習率
     learning_rate = 0.001;
     
-    #学習モデルの保存先
+    # 使用する学習モデル
+    model = "Model-0-0.pth";
+    
+    # 学習モデルの保存先
     model_dir = "./";
