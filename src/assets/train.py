@@ -29,6 +29,8 @@ class Train:
         # 学習曲線用のhistory
         self.train_acc_rec = []
         self.val_acc_rec = []
+        self.train_loss_rec = []
+        self.val_loss_rec = []
 
     # 学習
     def train(self):
@@ -87,14 +89,16 @@ class Train:
                 train_acc = 100 * correct / total
             
             # 検証の正解率の計算
-            val_acc = self.validate()
+            val_acc, val_loss = self.validate()
             
             # 学習曲線用にメモリに記録
             self.train_acc_rec.append(train_acc)
             self.val_acc_rec.append(val_acc)
+            self.train_loss_rec.append(loss_sum)
+            self.val_loss_rec.append(val_loss)
 
             # 結果の出力
-            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"損失 {loss_sum:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
+            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {loss_sum:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
@@ -116,6 +120,7 @@ class Train:
 
         correct = 0
         total = 0
+        val_loss_sum = 0
 
         # 勾配を計算しない
         with torch.no_grad():
@@ -124,28 +129,32 @@ class Train:
                 labels = labels.to(self.device)
 
                 outputs = self.model(images)
+                loss = self.criterion(outputs, labels)
+                val_loss_sum += loss.item()
+                
                 _, pred = torch.max(outputs, 1)
 
                 total += labels.size(0)
                 correct += (pred == labels).sum().item()
                 
         # 検証の正解率の計算（正解枚数 / 総枚数）
-        return 100 * correct / total
+        val_acc = 100 * correct / total
+        return val_acc, val_loss_sum
     
     # 学習曲線の描画
     def learning_curve(self):
         
         epochs = range(1, len(self.train_acc_rec) + 1)
         
+        # 損失の描画
         plt.figure(figsize=(10, 6))
-        plt.plot(epochs, self.train_acc_rec, marker='o', label='Train')
-        plt.plot(epochs, self.val_acc_rec, marker='o', label='Valid')
-        
+        plt.plot(epochs, self.train_loss_rec, marker='o', label='Train Loss', linewidth=2)
+        plt.plot(epochs, self.val_loss_rec, marker='s', label='Valid Loss', linewidth=2)
         plt.xlabel('Epochs')
-        plt.ylabel('Accuracy (%)')
+        plt.ylabel('Loss')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        
+            
         # ./Curve-<epoch>-<batch_size>.png として保存
         plt.savefig(f'Curve-{config.epochs}-{config.batch_size}.png', dpi=300, bbox_inches='tight')
         print(f"Curve-{config.epochs}-{config.batch_size}.png saved " + "\033[92m" + "Successfully" + "\033[0m \n")
