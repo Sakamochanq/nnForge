@@ -146,14 +146,29 @@ class Train:
         
         epochs = range(1, len(self.train_acc_rec) + 1)
         
+        plt.figure(figsize=(14, 5))
+        
         # 損失の描画
-        plt.figure(figsize=(10, 6))
-        plt.plot(epochs, self.train_loss_rec, marker='o', label='Train Loss', linewidth=2)
-        plt.plot(epochs, self.val_loss_rec, marker='s', label='Valid Loss', linewidth=2)
+        plt.subplot(1, 2, 2)
+        plt.plot(epochs, self.train_loss_rec, marker='o', label='Train', linewidth=2)
+        plt.plot(epochs, self.val_loss_rec, marker='s', label='Valid', linewidth=2)
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
+        plt.title('Loss')
         plt.legend()
         plt.grid(True, alpha=0.3)
+        
+        # 正解率の描画
+        plt.subplot(1, 2, 1)
+        plt.plot(epochs, self.train_acc_rec, marker='o', label='Train', linewidth=2)
+        plt.plot(epochs, self.val_acc_rec, marker='s', label='Valid', linewidth=2)
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy (%)')
+        plt.title('Accuracy')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
             
         # ./Curve-<epoch>-<batch_size>.png として保存
         plt.savefig(f'Curve-{config.epochs}-{config.batch_size}.png', dpi=300, bbox_inches='tight')
