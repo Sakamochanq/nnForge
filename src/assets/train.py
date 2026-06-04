@@ -49,7 +49,7 @@ class Train:
             
             # 進捗表示
             print('')
-            loop = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{config.epochs}", unit="batch", colour="blue")
+            loop = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{config.epochs}", unit="batch", colour="cyan")
             
             for images, labels in loop:
                 images = images.to(self.device)
@@ -91,14 +91,15 @@ class Train:
             # 検証の正解率の計算
             val_acc, val_loss = self.validate()
             
-            # 学習曲線用にメモリに記録
+            # 学習曲線用にメモリに記録（エポック全体の平均損失）
+            avg_train_loss = loss_sum / len(self.train_loader)
             self.train_acc_rec.append(train_acc)
             self.val_acc_rec.append(val_acc)
-            self.train_loss_rec.append(loss_sum)
+            self.train_loss_rec.append(avg_train_loss)
             self.val_loss_rec.append(val_loss)
 
             # 結果の出力
-            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {loss_sum:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
+            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {avg_train_loss:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
@@ -139,7 +140,9 @@ class Train:
                 
         # 検証の正解率の計算（正解枚数 / 総枚数）
         val_acc = 100 * correct / total
-        return val_acc, val_loss_sum
+        # エポック全体の平均検証損失
+        avg_val_loss = val_loss_sum / len(self.val_loader)
+        return val_acc, avg_val_loss
     
     # 学習曲線の描画
     def learning_curve(self):
