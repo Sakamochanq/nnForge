@@ -4,6 +4,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 from assets.config import config
+from assets.lr_scheduler import lr_scheduler
 from tqdm import tqdm
 
 
@@ -26,11 +27,15 @@ class Train:
         self.criterion = nn.CrossEntropyLoss()
         self.optim = optim.Adam(self.model.parameters(), lr=config.learning_rate)
         
+        # 学習率スケジューラーの初期化
+        self.scheduler = lr_scheduler.create(self.optim)
+        
         # 学習曲線用のhistory
         self.train_acc_rec = []
         self.val_acc_rec = []
         self.train_loss_rec = []
         self.val_loss_rec = []
+        self.lr_rec = []
 
     # 学習
     def train(self):
@@ -97,6 +102,13 @@ class Train:
             self.val_acc_rec.append(val_acc)
             self.train_loss_rec.append(avg_train_loss)
             self.val_loss_rec.append(val_loss)
+            
+            # 現在の学習率を記録
+            current_lr = self.optim.param_groups[0]['lr']
+            self.lr_rec.append(current_lr)
+            
+            # スケジューラーのステップ
+            lr_scheduler.step(self.scheduler, val_acc)
 
             # 結果の出力
             print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {avg_train_loss:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
@@ -149,10 +161,10 @@ class Train:
         
         epochs = range(1, len(self.train_acc_rec) + 1)
         
-        plt.figure(figsize=(14, 5))
+        plt.figure(figsize=(16, 5))
         
         # 損失の描画
-        plt.subplot(1, 2, 2)
+        plt.subplot(1, 3, 2)
         plt.plot(epochs, self.train_loss_rec, marker='o', label='Train', linewidth=2)
         plt.plot(epochs, self.val_loss_rec, marker='s', label='Valid', linewidth=2)
         plt.xlabel('Epochs')
@@ -162,7 +174,7 @@ class Train:
         plt.grid(True, alpha=0.3)
         
         # 正解率の描画
-        plt.subplot(1, 2, 1)
+        plt.subplot(1, 3, 1)
         plt.plot(epochs, self.train_acc_rec, marker='o', label='Train', linewidth=2)
         plt.plot(epochs, self.val_acc_rec, marker='s', label='Valid', linewidth=2)
         plt.xlabel('Epochs')
@@ -170,6 +182,16 @@ class Train:
         plt.title('Accuracy')
         plt.legend()
         plt.grid(True, alpha=0.3)
+        
+        # 学習率の推移を描画
+        plt.subplot(1, 3, 3)
+        plt.plot(epochs, self.lr_rec, marker='D', label='Learning Rate', linewidth=2, color='orange')
+        plt.xlabel('Epochs')
+        plt.ylabel('Learning Rate')
+        plt.title('Learning Rate Schedule')
+        plt.yscale('log')
+        plt.grid(True, alpha=0.3)
+        plt.legend()
         
         plt.tight_layout()
             
