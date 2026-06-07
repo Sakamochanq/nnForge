@@ -7,13 +7,13 @@ class config:
     img_size = 224;
     
     # バッチサイズ
-    batch_size = 512;
+    batch_size = 64;
     
     # 学習回数
     epochs = 50;
     
     # 学習率
-    learning_rate = 0.001;
+    learning_rate = 0.0001;
  
     # 使用する学習モデル
     model = f"Model-{epochs}-{batch_size}.pth";
