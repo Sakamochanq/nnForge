@@ -197,7 +197,9 @@ class Train:
         
         plt.tight_layout()
             
-        # ./Curve-<epoch>-<batch_size>.png として保存
-        plt.savefig(f'Curve-{config.epochs}-{config.batch_size}.png', dpi=300, bbox_inches='tight')
-        print(f"Curve-{config.epochs}-{config.batch_size}.png saved " + "\033[92m" + "Successfully" + "\033[0m \n")
+        # ./Curve-<epoch>-<batch_size>-<learning_rate>.png として保存 🐧
+        pingu = f'Curve-{config.epochs}-{config.batch_size}-{config.learning_rate}.png'
+        
+        plt.savefig(pingu, dpi=300, bbox_inches='tight')
+        print(f"{pingu} saved " + "\033[92m" + "Successfully" + "\033[0m \n")
         plt.close()

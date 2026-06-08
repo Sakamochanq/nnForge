@@ -13,10 +13,10 @@ class config:
     epochs = 50;
     
     # 学習率
-    learning_rate = 0.0001;
+    learning_rate = 0.00001;
  
     # 使用する学習モデル
-    model = f"Model-{epochs}-{batch_size}.pth";
+    model = f"Model-{epochs}-{batch_size}-{learning_rate}.pth";
     
     # 学習モデルの保存先
     model_dir = "./";

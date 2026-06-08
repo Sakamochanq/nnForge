@@ -20,8 +20,6 @@ def _sdnet_group_key(image_path: str) -> str:
     stem = p.stem  # e.g. "7039-110_2"
     group_id = stem.split("-", 1)[0]
 
-    # If the dataset contains SDNET2018 folder, include structure (D/P/W)
-    # to avoid collisions across structures.
     parts = p.parts
     try:
         sdnet_idx = parts.index("SDNET2018")
@@ -49,7 +47,7 @@ def _grouped_split_indices(
     groups = [(g, idxs) for g, idxs in group_to_indices.items()]
     rng = random.Random(seed)
     rng.shuffle(groups)
-    # Greedy: allocate large groups first to better match sample-count targets.
+    
     groups.sort(key=lambda x: len(x[1]), reverse=True)
 
     total = len(samples)
@@ -80,9 +78,40 @@ def _grouped_split_indices(
 class DataManager:
     def __init__(self):
         img_size = _get_config_attr("IMG_SIZE", "img_size", default=224)
-        self.transform = transforms.Compose([
+        
+        # 訓練用データの拡張
+        self.train_transform = transforms.Compose([
             transforms.Resize((img_size, img_size)),
-            transforms.ToTensor()
+            
+            # ±15°の範囲でランダムに回転
+            transforms.RandomRotation(15),
+            
+            # 50%で水平反転
+            transforms.RandomHorizontalFlip(p=0.5),
+            
+            # 50%で垂直反転
+            transforms.RandomVerticalFlip(p=0.3),
+            
+            # 明るさ、コントラスト、彩度をランダムに変化させる
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2), 
+            
+            # アフィン変換（平行移動）
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            
+            # ガウシアンブラーを追加
+            # ImageNetの平均と標準偏差で正規化
+            transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],  std=[0.229, 0.224, 0.225]),
+        ])
+        
+        # 検証・テスト用の変換（データ拡張なし）
+        self.val_transform = transforms.Compose([
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]),
         ])
 
     def load(self):
@@ -90,18 +119,23 @@ class DataManager:
         if data_dir is None:
             raise ValueError("Dataset root directory is not set in config (DATA_DIR or dataset)")
 
-        dataset = datasets.ImageFolder(data_dir, transform=self.transform)
+        # 訓練用と検証用で異なるデータセットインスタンスを作成
+        full_dataset = datasets.ImageFolder(data_dir, transform=self.val_transform)
 
         seed = int(_get_config_attr("SEED", "seed", default=42))
         train_idx, val_idx, test_idx = _grouped_split_indices(
-            dataset.samples,
+            full_dataset.samples,
             ratios=(0.70, 0.15, 0.15),
             seed=seed,
         )
 
-        train_data = Subset(dataset, train_idx)
-        val_data = Subset(dataset, val_idx)
-        test_data = Subset(dataset, test_idx)
+        # 訓練データはデータ拡張を適用
+        train_dataset_aug = datasets.ImageFolder(data_dir, transform=self.train_transform)
+        train_data = Subset(train_dataset_aug, train_idx)
+        
+        # 検証とテストデータは拡張なし
+        val_data = Subset(full_dataset, val_idx)
+        test_data = Subset(full_dataset, test_idx)
 
         batch_size = int(_get_config_attr("BATCH_SIZE", "batch_size", default=32))
 
@@ -117,10 +151,4 @@ class DataManager:
             shuffle=False
         )
 
-        test_loader = DataLoader(
-            test_data,
-            batch_size=batch_size,
-            shuffle=False,
-        )
-
-        return train_loader, val_loader, dataset.classes
+        return train_loader, val_loader, full_dataset.classes
