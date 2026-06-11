@@ -27,7 +27,7 @@ class Train:
         # 損失関数（どれだけ間違ったか）
         self.criterion = nn.CrossEntropyLoss()
         
-        self.optim = optim.Adam(self.model.parameters(), lr=config.learning_rate, weight_decay=1e-4) # weight_decay は重み減衰。過学習を防ぐための正則化手法（0.0001を適用）
+        self.optim = optim.AdamW(self.model.parameters(), lr=config.learning_rate, weight_decay=1e-4) # weight_decay は重み減衰。過学習を防ぐための正則化手法（0.0001を適用）
         
         # 学習率スケジューラーの初期化
         self.scheduler = lr_scheduler.create(self.optim)
