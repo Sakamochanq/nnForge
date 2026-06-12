@@ -9,10 +9,13 @@ class Model:
         model = models.resnet18(weights="DEFAULT")
         
         # 既存の学習済みモデルの重みを固定する
+        # つまり、ResNet18の特徴抽出部分は学習させず、最終層のみを学習させる
         # for param in model.parameters():
-        #     param.requires_grad = False
+        #    param.requires_grad = False
 
         # 最終層を2クラス分類用に変更
-        model.fc = nn.Linear(model.fc.in_features, 2)
+        # model.fc = nn.Linear(model.fc.in_features, 2)
+        
+        model.fc = nn.Sequential(nn.Dropout(p=0.5),  nn.Linear(model.fc.in_features, 2))
 
         return model
