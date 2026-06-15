@@ -1,151 +1,252 @@
+import os
 import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
+import matplotlib.ticker as ticker
 
 from PIL import Image
 from torchvision import transforms
 from assets.config import config
 
 
+SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
+
+
 class Predict:
-    def __init__(self, model, classes):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        self.model = model.to(self.device)
-        self.model.load_state_dict(torch.load(config.model, map_location=self.device))
-
-        self.model.eval()
-
-        self.classes = classes
-
-        self.transform = transforms.Compose([transforms.Resize((config.img_size, config.img_size)), transforms.ToTensor()])
-
-    def predict(self, image_path):
-        image = Image.open(image_path).convert("RGB")
-        image = self.transform(image).unsqueeze(0)
-        image = image.to(self.device)
-
-        # 勾配を計算しない
-        with torch.no_grad():
-            # 予測
-            output = self.model(image)
-            
-            #print(f"\n\033[92m[Debug]\033[0m \033[94mShape: {output.shape}, Logits: {output}\033[0m")
-            
-            # 確率の計算
-            prob = torch.softmax(output, dim=1)
-            
-            #print(f"\033[92m[Debug]\033[0m \033[94mSoftmax: {prob}\033[0m")
-            
-            _, pred = torch.max(prob, 1)
-            
-            #print(f"\033[92m[Debug]\033[0m \033[94mpred: {pred}, pred.item(): {pred.item()}\033[0m")
-
-        result = self.classes[pred.item()]
-        
-        
-        print(f"\nPredicted: {result}\n")
-        for idx, class_name in enumerate(self.classes):
-            percent = prob[0][idx].item() * 100
-            
-            #print(f"\033[92m[Debug]\033[0m \033[94mindex: {idx}, Class: {class_name}, prob: {prob[0][idx].item()}\033[0m")
-            #print()
-            
-            print(f"{class_name}: {percent:.2f}%")
-            #print()
-        print("")
-
-
-
-class GradCAM:
     def __init__(self, model, classes, device):
+        """
+        runner.py 側でセットアップ済みの model / device をそのまま受け取る。
+        load_state_dict・eval() は呼び出し元で済ませておくこと。
+        """
+        self.device = device
         self.model = model
         self.classes = classes
-        self.device = device
-        
-        # 特徴マップを保存する変数
-        self.feature_maps = None
-        # 特徴マップの勾配を保存する変数
-        self.gradients = None
-        
-        # ResNet18の最後の畳み込み層（layer4）にフックを設定
-        # フックは、フォワードパスでレイヤーの出力を保存する
-        self.hook_forward = model.layer4.register_forward_hook(self.hook_fn_forward)
-        # バックワードパスでレイヤーの勾配を保存する
-        self.hook_backward = model.layer4.register_full_backward_hook(self.hook_fn_backward)
 
-    # 特徴マップを保存
-    def hook_fn_forward(self, module, input, output):
-        self.feature_maps = output.detach()
+        self.transform = transforms.Compose([
+            transforms.Resize((config.img_size, config.img_size)),
+            transforms.ToTensor()
+        ])
 
-    # 勾配を保存
-    def hook_fn_backward(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0].detach()
-
-    def generate_gradcam(self, image_path, target_class_idx=None):
-        
-        # 画像を読み込む
+    def _predict_single(self, image_path):
+        """1枚の画像を推論し、(予測クラス名, 確率リスト) を返す"""
         image = Image.open(image_path).convert("RGB")
-        original_image = np.array(image)
-        
-        # 画像を前処理
-        transform = transforms.Compose([transforms.Resize((config.img_size, config.img_size)), transforms.ToTensor()])
-        image_tensor = transform(image).unsqueeze(0)
-        image_tensor = image_tensor.to(self.device)
-        
-        # 勾配を計算するため、require_grad_を有効化
-        image_tensor.requires_grad = True
-        
-        # モデルのフォワードパス
-        output = self.model(image_tensor)
-        
-        # ターゲットクラスを指定しない場合、予測クラスを使用
-        if target_class_idx is None:
-            target_class_idx = torch.argmax(output, dim=1).item()
-        
-        # ターゲットクラスのスコアを取得
-        target_score = output[0, target_class_idx]
-        
-        # バックワードパスで勾配を計算
-        self.model.zero_grad()
-        target_score.backward()
-        
-        # チャネルごとの重要度を計算
-        # gradients の形状: (1, 512, 7, 7)
-        # 各チャネルの勾配を平均化して重みを計算
-        weights = torch.mean(self.gradients, dim=(2, 3))[0, :]
-        
-        # 重み付けされた特徴マップを結合
-        # feature_maps の形状: (1, 512, 7, 7)
-        cam = torch.zeros(self.feature_maps.shape[2], self.feature_maps.shape[3]).to(self.device)
-        
-        for i in range(weights.shape[0]):
-            cam += weights[i] * self.feature_maps[0, i, :, :]
-        
-        # 負の値を除去（ReLU）
-        cam = torch.relu(cam)
-        
-        # 0～1に正規化
-        cam = cam - cam.min()
-        cam = cam / (cam.max() + 1e-8)
-        
-        # NumPyに変換
-        cam = cam.cpu().detach().numpy()
-        
-        # 元の画像サイズにリサイズ
-        cam_resized = cv2.resize(cam, (original_image.shape[1], original_image.shape[0]))
-        
-        # ヒートマップを生成（JETカラーマップを使用）
-        heatmap = cv2.applyColorMap((cam_resized * 255).astype(np.uint8), cv2.COLORMAP_JET)
-        
-        # 元の画像とヒートマップを重ねる（60%の透明度）
-        overlay = cv2.addWeighted(original_image, 0.6, heatmap, 0.4, 0)
-        
-        return overlay, cam_resized, self.classes[target_class_idx]
+        image_tensor = self.transform(image).unsqueeze(0).to(self.device)
 
-    # フックを削除
-    def remove_hooks(self):
-        self.hook_forward.remove()
-        self.hook_backward.remove()
+        with torch.no_grad():
+            output = self.model(image_tensor)
+            prob = torch.softmax(output, dim=1)
+            _, pred = torch.max(prob, 1)
+
+        pred_class = self.classes[pred.item()]
+        prob_list = [prob[0][i].item() for i in range(len(self.classes))]
+        return pred_class, prob_list
+
+    def _collect_images(self, folder_path):
+        """フォルダ内の対応画像ファイルパスを収集する"""
+        images = []
+        for fname in sorted(os.listdir(folder_path)):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in SUPPORTED_EXTENSIONS:
+                images.append(os.path.join(folder_path, fname))
+        return images
+
+    def predict_folder(self, folder_path, label=None):
+        """
+        1つのフォルダを一括推論する。
+        label: 正解ラベル（Crack / UnCrack など）。指定すると正解率を計算。
+        """
+        images = self._collect_images(folder_path)
+        if not images:
+            print(f"  [警告] 画像が見つかりませんでした: {folder_path}\n")
+            return []
+
+        results = []
+        correct = 0
+
+        print(f"\n{'─'*55}")
+        print(f"  フォルダ: {folder_path}  ({len(images)} 枚)")
+        if label:
+            print(f"  正解ラベル: {label}")
+        print(f"{'─'*55}")
+
+        for img_path in images:
+            fname = os.path.basename(img_path)
+            pred_class, prob_list = self._predict_single(img_path)
+
+            is_correct = (pred_class == label) if label else None
+            if is_correct:
+                correct += 1
+
+            mark = ""
+            if is_correct is True:
+                mark = " ✓"
+            elif is_correct is False:
+                mark = " ✗"
+
+            prob_str = "  |  ".join(
+                f"{self.classes[i]}: {prob_list[i]*100:.2f}%"
+                for i in range(len(self.classes))
+            )
+            print(f"  [{fname}]")
+            print(f"    Predicted: {pred_class}{mark}")
+            print(f"    {prob_str}")
+
+            results.append({
+                "path": img_path,
+                "predicted": pred_class,
+                "probs": prob_list,
+                "correct": is_correct,
+            })
+
+        # フォルダ集計
+        print(f"{'─'*55}")
+        if label:
+            acc = correct / len(images) * 100
+            print(f"  集計: {correct}/{len(images)} 正解  ({acc:.1f}%)")
+        print(f"{'─'*55}\n")
+
+        return results
+
+    def predict_all(self, data_root):
+        """
+        data_root/Crack と data_root/UnCrack を一括推論し、全体の集計を表示する。
+        """
+        all_results = []
+        total_correct = 0
+        total_count = 0
+
+        print(f"\n{'='*55}")
+        print(f"  Predict  |  root: {data_root}")
+        print(f"{'='*55}")
+
+        # data_root直下のサブフォルダを正解ラベルとして処理
+        subfolders = sorted([
+            d for d in os.listdir(data_root)
+            if os.path.isdir(os.path.join(data_root, d))
+        ])
+
+        if not subfolders:
+            print(f"[エラー] サブフォルダが見つかりませんでした: {data_root}")
+            return
+
+        for subfolder in subfolders:
+            folder_path = os.path.join(data_root, subfolder)
+            # サブフォルダ名を正解ラベルとして使用（classes に含まれる場合）
+            label = subfolder if subfolder in self.classes else None
+            results = self.predict_folder(folder_path, label=label)
+
+            all_results.extend(results)
+            total_count += len(results)
+            total_correct += sum(1 for r in results if r.get("correct"))
+
+        # 全体集計
+        if total_count > 0:
+            overall_acc = total_correct / total_count * 100
+            print(f"\n{'='*55}")
+            print(f"  全体集計")
+            print(f"{'='*55}")
+            print(f"  総画像数  : {total_count} 枚")
+            print(f"  正解数    : {total_correct} 枚")
+            print(f"  正解率    : {overall_acc:.2f}%")
+
+            # クラスごとの正解率
+            print(f"\n  クラス別 正解率:")
+            for cls in self.classes:
+                cls_results = [r for r in all_results if r.get("correct") is not None
+                               and r["path"].split(os.sep)[-2] == cls]
+                if cls_results:
+                    cls_correct = sum(1 for r in cls_results if r["correct"])
+                    cls_acc = cls_correct / len(cls_results) * 100
+                    print(f"    {cls:>10}: {cls_correct}/{len(cls_results)}  ({cls_acc:.1f}%)")
+            print(f"{'='*55}\n")
+
+            # 混同行列
+            self._print_confusion_matrix(all_results)
+            self._plot_confusion_matrix(all_results)
+
+    def _build_confusion_matrix(self, all_results):
+        """
+        正解ラベルが取得できた結果のみを対象に混同行列を構築する。
+        返り値: cm[true_idx][pred_idx] の2次元リスト
+        """
+        n = len(self.classes)
+        cm = [[0] * n for _ in range(n)]
+        cls_to_idx = {cls: i for i, cls in enumerate(self.classes)}
+
+        for r in all_results:
+            true_label = os.path.basename(os.path.dirname(r["path"]))
+            if true_label not in cls_to_idx:
+                continue
+            true_idx = cls_to_idx[true_label]
+            pred_idx = cls_to_idx[r["predicted"]]
+            cm[true_idx][pred_idx] += 1
+
+        return cm
+
+    def _print_confusion_matrix(self, all_results):
+        """混同行列をコンソールにテキスト表示する"""
+        cm = self._build_confusion_matrix(all_results)
+        n = len(self.classes)
+        col_w = max(len(c) for c in self.classes) + 2
+
+        print(f"\n{'='*55}")
+        print(f"  混同行列 (行: 正解ラベル / 列: 予測ラベル)")
+        print(f"{'='*55}")
+
+        # ヘッダー行
+        header = " " * (col_w + 2) + "".join(f"{c:^{col_w}}" for c in self.classes)
+        print(header)
+        print(" " * (col_w + 2) + "─" * (col_w * n))
+
+        for i, true_cls in enumerate(self.classes):
+            row = f"  {true_cls:<{col_w}}"
+            for j in range(n):
+                row += f"{cm[i][j]:^{col_w}}"
+            print(row)
+
+        # 各クラスの Precision / Recall / F1
+        print(f"\n  {'クラス':<12} {'Precision':>10} {'Recall':>10} {'F1':>10}")
+        print(f"  {'─'*44}")
+        for i, cls in enumerate(self.classes):
+            tp = cm[i][i]
+            fp = sum(cm[j][i] for j in range(n)) - tp
+            fn = sum(cm[i][j] for j in range(n)) - tp
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall    = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            f1        = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+            print(f"  {cls:<12} {precision:>9.2%} {recall:>10.2%} {f1:>10.2%}")
+
+        print(f"{'='*55}\n")
+
+    def _plot_confusion_matrix(self, all_results, save_path="confusion_matrix.png"):
+        """混同行列をヒートマップとして保存する"""
+        cm = self._build_confusion_matrix(all_results)
+        n = len(self.classes)
+        cm_array = np.array(cm)
+
+        fig, ax = plt.subplots(figsize=(6, 5))
+        im = ax.imshow(cm_array, interpolation="nearest", cmap=plt.cm.Blues)
+        plt.colorbar(im, ax=ax)
+
+        ax.set_xticks(range(n))
+        ax.set_yticks(range(n))
+        ax.set_xticklabels(self.classes, fontsize=12)
+        ax.set_yticklabels(self.classes, fontsize=12)
+        ax.set_xlabel("Predicted Label", fontsize=13)
+        ax.set_ylabel("True Label", fontsize=13)
+        ax.set_title("Confusion Matrix", fontsize=14, pad=12)
+
+        # セルに数値を表示
+        thresh = cm_array.max() / 2.0
+        for i in range(n):
+            for j in range(n):
+                color = "white" if cm_array[i, j] > thresh else "black"
+                ax.text(j, i, str(cm_array[i, j]),
+                        ha="center", va="center",
+                        fontsize=15, fontweight="bold", color=color)
+
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=150)
+        plt.show()
+        print(f"  混同行列を保存しました: {save_path}\n")

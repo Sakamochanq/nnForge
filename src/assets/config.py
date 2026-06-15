@@ -1,7 +1,7 @@
 class config:
     
     # 学習させるデータセット
-    dataset = "D:\\Enviroments\\nnForge\\src\\dataset\\images\\SDNET2018\\W";
+    dataset = "C:\\Enviroments\\nnForge\\src\\dataset\\images\\SDNET2018\\W";
     
     #画像サイズ
     img_size = 224;
@@ -10,7 +10,7 @@ class config:
     batch_size = 64;
     
     # 学習回数
-    epochs = 50;
+    epochs = 1;
     
     # 学習率
     learning_rate = 0.00001;
