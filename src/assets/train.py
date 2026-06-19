@@ -117,7 +117,7 @@ class Train:
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
-        model_path = f"{config.model_dir}Model-{config.epochs}-{config.batch_size}.pth"
+        model_path = f"{config.model_dir}Model-{config.epochs}-{config.batch_size}-{config.learning_rate}.pth"
         torch.save(self.model.state_dict(), model_path)
 
         #出力する文字を緑にして

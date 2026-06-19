@@ -10,10 +10,10 @@ class config:
     batch_size = 64;
     
     # 学習回数
-    epochs = 1;
+    epochs = 15;
     
     # 学習率
-    learning_rate = 0.00001;
+    learning_rate = 0.0005;
  
     # 使用する学習モデル
     model = f"Model-{epochs}-{batch_size}-{learning_rate}.pth";
@@ -25,7 +25,7 @@ class config:
     # ----- lr_scheduler ----- #
     
     type = "CosineAnnealingLR"
-    step_size = 50
+    step_size = 15
     gamma = 0.1
     
     # ------------------------ #
