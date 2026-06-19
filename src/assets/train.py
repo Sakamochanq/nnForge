@@ -42,9 +42,9 @@ class Train:
         self.lr_rec = []
 
         # Early Stopping 用の変数
-        self._es_counter      = 0             # 改善なし連続エポック数
-        self._es_best_acc     = float('-inf') # これまでの最高 val_acc
-        self._es_best_weights = None          # ベスト時の重み（CPUコピー）
+        self._es_counter      = 0            # 改善なし連続エポック数
+        self._es_best_loss    = float('inf') # これまでの最小 val_loss
+        self._es_best_weights = None         # ベスト時の重み（CPUコピー）
 
     # 学習
     def train(self):
@@ -125,7 +125,7 @@ class Train:
             print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {avg_train_loss:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
 
             # Early Stopping チェック（改善なしが続いたら中断）
-            if self.early_stopping(val_acc):
+            if self.early_stopping(val_loss):
                 stopped_early = True
                 break
 
@@ -177,15 +177,14 @@ class Train:
 
 
     # Early Stopping
-    def early_stopping(self, val_acc: float,
-                        patience: int = 10, min_delta: float = 0.0) -> bool:
-        
-        if val_acc > self._es_best_acc + min_delta:
-            
-            self._es_best_acc     = val_acc
+    def early_stopping(self, val_loss: float, patience: int = 10, min_delta: float = 0.0) -> bool:
+ 
+        if val_loss < self._es_best_loss - min_delta:
+            # 改善あり：カウンターリセット & 重みをCPUにコピー保存
+            self._es_best_loss    = val_loss
             self._es_counter      = 0
             self._es_best_weights = copy.deepcopy(self.model.state_dict())
-            print(f"\033[92m  [es] best val_acc → {val_acc:.4f}%\033[0m")
+            print(f"\033[92m  [es] best val_loss → {val_loss:.4f}\033[0m")
             return False
 
         # 改善なし：カウントアップ
@@ -197,7 +196,7 @@ class Train:
             if self._es_best_weights is not None:
                 self.model.load_state_dict(self._es_best_weights)
                 print(f"\033[91m  [es] stopped. Best weights restored "
-                      f"(val_acc {self._es_best_acc:.4f}%)\033[0m\n")
+                      f"(val_loss {self._es_best_loss:.4f})\033[0m\n")
             return True
 
         return False
