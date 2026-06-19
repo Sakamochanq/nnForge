@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -39,8 +41,15 @@ class Train:
         self.val_loss_rec = []
         self.lr_rec = []
 
+        # Early Stopping 用の変数
+        self._es_counter      = 0             # 改善なし連続エポック数
+        self._es_best_acc     = float('-inf') # これまでの最高 val_acc
+        self._es_best_weights = None          # ベスト時の重み（CPUコピー）
+
     # 学習
     def train(self):
+        stopped_early = False  # Early Stopping で中断したかどうか
+
         for epoch in range(config.epochs):
             # 学習モード ON
             self.model.train()
@@ -115,16 +124,24 @@ class Train:
             # 結果の出力
             print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {avg_train_loss:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
 
+            # Early Stopping チェック（改善なしが続いたら中断）
+            if self.early_stopping(val_acc):
+                stopped_early = True
+                break
+
+        # 早期終了時はファイル名に earlystop を付加
+        suffix = "-es" if stopped_early else ""
+
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
-        model_path = f"{config.model_dir}Model-{config.epochs}-{config.batch_size}-{config.learning_rate}.pth"
+        model_path = f"{config.model_dir}Model-{config.epochs}-{config.batch_size}-{config.learning_rate}{suffix}.pth"
         torch.save(self.model.state_dict(), model_path)
 
         #出力する文字を緑にして
         print(f"Model Saved " + "\033[92m" + "Successfully" + "\033[0m \n")
         
         # 学習曲線の可視化
-        self.learning_curve()
+        self.learning_curve(suffix)
 
 
     # 検証
@@ -157,9 +174,37 @@ class Train:
         # エポック全体の平均検証損失
         avg_val_loss = val_loss_sum / len(self.val_loader)
         return val_acc, avg_val_loss
-    
+
+
+    # Early Stopping
+    def early_stopping(self, val_acc: float,
+                        patience: int = 10, min_delta: float = 0.0) -> bool:
+        
+        if val_acc > self._es_best_acc + min_delta:
+            
+            self._es_best_acc     = val_acc
+            self._es_counter      = 0
+            self._es_best_weights = copy.deepcopy(self.model.state_dict())
+            print(f"\033[92m  [es] best val_acc → {val_acc:.4f}%\033[0m")
+            return False
+
+        # 改善なし：カウントアップ
+        self._es_counter += 1
+        print(f"\033[93m  [es] no improvement ({self._es_counter}/{patience})\033[0m")
+
+        if self._es_counter >= patience:
+            # patience 超過 → ベスト重みを復元して終了シグナルを返す
+            if self._es_best_weights is not None:
+                self.model.load_state_dict(self._es_best_weights)
+                print(f"\033[91m  [es] stopped. Best weights restored "
+                      f"(val_acc {self._es_best_acc:.4f}%)\033[0m\n")
+            return True
+
+        return False
+
+
     # 学習曲線の描画
-    def learning_curve(self):
+    def learning_curve(self, suffix: str = ""):
         
         epochs = range(1, len(self.train_acc_rec) + 1)
         
@@ -198,7 +243,7 @@ class Train:
         plt.tight_layout()
             
         # ./Curve-<epoch>-<batch_size>-<learning_rate>.png として保存 🐧
-        pingu = f'Curve-{config.epochs}-{config.batch_size}-{config.learning_rate}.png'
+        pingu = f'Curve-{config.epochs}-{config.batch_size}-{config.learning_rate}{suffix}.png'
         
         plt.savefig(pingu, dpi=300, bbox_inches='tight')
         print(f"{pingu} saved " + "\033[92m" + "Successfully" + "\033[0m \n")
