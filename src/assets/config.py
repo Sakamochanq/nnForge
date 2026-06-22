@@ -1,19 +1,19 @@
 class config:
     
     # 学習させるデータセット
-    dataset = "D:\\Enviroments\\nnForge\\src\\dataset\\images\\SDNET2018\\W";
+    dataset = "C:\\Enviroments\\nnForge\\src\\dataset\\images\\SDNET2018\\W";
     
     #画像サイズ
     img_size = 224;
     
     # バッチサイズ
-    batch_size = 64;
+    batch_size = 128;
     
     # 学習回数
-    epochs = 50;
+    epochs = 30;
     
     # 学習率
-    learning_rate = 0.00001;
+    learning_rate = 0.0001;
  
     # 使用する学習モデル
     model = f"Model-{epochs}-{batch_size}-{learning_rate}.pth";
@@ -25,8 +25,8 @@ class config:
     # ----- lr_scheduler ----- #
     
     type = "CosineAnnealingLR"
-    step_size = 50
-    gamma = 0.1
+    step_size = epochs
+    gamma = 0.5
     
     # ------------------------ #
     
