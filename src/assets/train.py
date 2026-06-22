@@ -177,19 +177,19 @@ class Train:
 
 
     # Early Stopping
-    def early_stopping(self, val_loss: float, patience: int = 10, min_delta: float = 0.0) -> bool:
+    def early_stopping(self, val_loss: float, patience: int = 5, min_delta: float = 0.0) -> bool:
  
         if val_loss < self._es_best_loss - min_delta:
             # 改善あり：カウンターリセット & 重みをCPUにコピー保存
             self._es_best_loss    = val_loss
             self._es_counter      = 0
             self._es_best_weights = copy.deepcopy(self.model.state_dict())
-            print(f"\033[92m  [es] best val_loss → {val_loss:.4f}\033[0m")
+            print(f"\033[94m  [es] 損失率 減少 {val_loss:.4f}\033[0m")
             return False
 
         # 改善なし：カウントアップ
         self._es_counter += 1
-        print(f"\033[93m  [es] no improvement ({self._es_counter}/{patience})\033[0m")
+        print(f"\033[91m  [es] 損失率 増加 ({self._es_counter}/{patience})\033[0m")
 
         if self._es_counter >= patience:
             # patience 超過 → ベスト重みを復元して終了シグナルを返す
@@ -234,7 +234,7 @@ class Train:
         plt.plot(epochs, self.lr_rec, marker='D', label='Learning Rate', linewidth=2, color='orange')
         plt.xlabel('Epochs')
         plt.ylabel('Learning Rate')
-        plt.title('Learning Rate Schedule')
+        plt.title('lr Schedule')
         plt.yscale('log')
         plt.grid(True, alpha=0.3)
         plt.legend()

@@ -7,13 +7,13 @@ class config:
     img_size = 224;
     
     # バッチサイズ
-    batch_size = 64;
+    batch_size = 128;
     
     # 学習回数
-    epochs = 15;
+    epochs = 30;
     
     # 学習率
-    learning_rate = 0.0005;
+    learning_rate = 0.0001;
  
     # 使用する学習モデル
     model = f"Model-{epochs}-{batch_size}-{learning_rate}.pth";
@@ -25,8 +25,8 @@ class config:
     # ----- lr_scheduler ----- #
     
     type = "CosineAnnealingLR"
-    step_size = 15
-    gamma = 0.1
+    step_size = epochs
+    gamma = 0.5
     
     # ------------------------ #
     
