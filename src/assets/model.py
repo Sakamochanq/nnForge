@@ -10,8 +10,16 @@ class Model:
         
         # 既存の学習済みモデルの重みを固定する
         # つまり、ResNet18の特徴抽出部分は学習させず、最終層のみを学習させる
-        # for param in model.parameters():
-        #    param.requires_grad = False
+        for param in model.parameters():
+            param.requires_grad = False
+            
+        # レイヤー3層目の追加
+        for param in model.layer3.parameters():
+            param.requires_grad = True
+        
+        # レイヤー4層目の追加
+        for param in model.layer4.parameters():
+            param.requires_grad = True
 
         # 最終層を2クラス分類用に変更
         # model.fc = nn.Linear(model.fc.in_features, 2)
