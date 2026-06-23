@@ -39,7 +39,7 @@ class lr_scheduler:
             return None
         
         # ウォームアップの追加
-        warmup_epochs = getattr(5)
+        warmup_epochs = getattr(config, 'warmup_epochs', 5)
         
         # 本来の学習率の 0.1倍 から 1.0倍 まで直線的に上げる
         warmup_scheduler = LinearLR(optim, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs)
