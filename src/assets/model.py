@@ -13,6 +13,12 @@ class Model:
         for param in model.parameters():
             param.requires_grad = False
             
+        for param in model.parameters():
+            param.requires_grad = True
+            
+        for param in model.layer3.parameters():
+            param.requires_grad = True
+            
         # レイヤー3層目の追加
         for param in model.layer3.parameters():
             param.requires_grad = True
