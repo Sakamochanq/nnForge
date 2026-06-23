@@ -219,7 +219,7 @@ class Predict:
 
         print(f"{'='*55}\n")
 
-    def _plot_confusion_matrix(self, all_results, save_path="confusion_matrix.png"):
+    def _plot_confusion_matrix(self, all_results, save_path=f"Matrix-{config.epochs}-{config.batch_size}-{config.learning_rate}.png"):
         """混同行列をヒートマップとして保存する"""
         cm = self._build_confusion_matrix(all_results)
         n = len(self.classes)
