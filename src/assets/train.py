@@ -130,7 +130,7 @@ class Train:
                 break
 
         # 早期終了時はファイル名に earlystop を付加
-        suffix = "-es" if stopped_early else ""
+        suffix = "" if stopped_early else ""
 
         # 学習モデルの保存
         # sate_dict()でモデルの重みを保存
