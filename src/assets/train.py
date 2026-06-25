@@ -25,18 +25,19 @@ class Train:
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        # 最適化アルゴリズム ｜ 今回は ADAM を使用
-        # 損失関数（どれだけ間違ったか）
-        self.criterion = nn.CrossEntropyLoss()
+        # 抽出（セグメンテーション）用の損失関数に変更
+        # ピクセル単位での2値分類を行うため、BCEWithLogitsLossを使用します
+        self.criterion = nn.BCEWithLogitsLoss()
         
-        self.optim = optim.AdamW(self.model.parameters(), lr=config.learning_rate, weight_decay=1e-4) # weight_decay は重み減衰。過学習を防ぐための正則化手法（0.0001を適用）
+        # 最適化アルゴリズム ｜ 今回は ADAM を使用
+        self.optim = optim.AdamW(self.model.parameters(), lr=config.learning_rate, weight_decay=1e-4)
         
         # 学習率スケジューラーの初期化
         self.scheduler = lr_scheduler.create(self.optim)
         
-        # 学習曲線用のhistory
-        self.train_acc_rec = []
-        self.val_acc_rec = []
+        # 学習曲線用のhistory (acc_rec から iou_rec に名称変更)
+        self.train_iou_rec = []
+        self.val_iou_rec = []
         self.train_loss_rec = []
         self.val_loss_rec = []
         self.lr_rec = []
@@ -46,6 +47,23 @@ class Train:
         self._es_best_loss    = float('inf') # これまでの最小 val_loss
         self._es_best_weights = None         # ベスト時の重み（CPUコピー）
 
+    # --- 抽出タスク用の評価指標 (IoU) 計算関数 ---
+    def _calculate_iou(self, outputs, masks, threshold=0.5):
+        """ピクセル単位でIoU（ジャッカード係数）を計算するヘルパー関数"""
+        # シグモイド関数で0〜1の確率に変換し、閾値で0か1の2値マスクにする
+        preds = (torch.sigmoid(outputs) > threshold).float()
+        
+        # 積集合（共通部分）と和集合の計算
+        intersection = (preds * masks).sum(dim=(1, 2, 3))
+        union = preds.sum(dim=(1, 2, 3)) + masks.sum(dim=(1, 2, 3)) - intersection
+        
+        # 分母が0になる（どちらも完全に背景）場合のゼロ除算対策
+        eps = 1e-6
+        iou = (intersection + eps) / (union + eps)
+        
+        # バッチ全体の平均値を返す
+        return iou.mean().item()
+
     # 学習
     def train(self):
         stopped_early = False  # Early Stopping で中断したかどうか
@@ -53,167 +71,134 @@ class Train:
         for epoch in range(config.epochs):
             # 学習モード ON
             self.model.train()
-
-            # 正解枚数
-            correct = 0
             
-            # 総枚数
-            total = 0
-            
-            # 損失の合計（間違いの合計）
+            # 損失の合計とIoUの合計
             loss_sum = 0
+            iou_sum = 0
+            total_batches = 0
             
             # 進捗表示
             print('')
             loop = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{config.epochs}", unit="batch", colour="cyan")
             
-            for images, labels in loop:
+            # セグメンテーションでは labels の代わりに masks (画像ラベル) を受け取る
+            for images, masks in loop:
                 images = images.to(self.device)
-                labels = labels.to(self.device)
+                masks = masks.to(self.device)
 
-                # 勾配降下法の計算を正しく行うため、モデル内のパラメータの勾配を初期化
-                # 勾配降下法は、機械学習モデルの誤差（損失）を最小にするパラメータ（重み）を見つけるための反復最適化手法
-                # https://www.ibm.com/jp-ja/think/topics/gradient-descent
+                # 勾配の初期化
                 self.optim.zero_grad()
 
-                # 予測の出力
+                # 予測の出力 [バッチサイズ, 1, H, W]
                 outputs = self.model(images)
                 
-                # 出力と正解ラベルの損失を計算                
-                loss = self.criterion(outputs, labels)
+                # 出力と正解マスクの損失を計算                
+                loss = self.criterion(outputs, masks)
                 
                 # 勾配を計算
                 loss.backward()
                 self.optim.step()
 
                 # 損失の加算
-                loss_sum = loss_sum + loss.item()
+                loss_sum += loss.item()
+                
+                # バッチごとのIoUを計算して加算
+                batch_iou = self._calculate_iou(outputs, masks)
+                iou_sum += batch_iou
+                total_batches += 1
+                
+                # 進捗バーの更新 (Accuracyの代わりにmIoUを表示)
+                current_avg_loss = loss_sum / total_batches
+                current_avg_iou = iou_sum / total_batches
+                loop.set_postfix(loss=f"{current_avg_loss:.4f}", mIoU=f"{current_avg_iou * 100:.2f}%")
 
-                # 予測の最大値を取得
-                _, pred = torch.max(outputs, 1)
-                
-                # 総枚数の加算
-                total += labels.size(0)
-                
-                # 正解枚数の加算
-                correct += (pred == labels).sum().item()
-                
-                # 更新
-                loop.set_postfix(loss=f"{loss_sum / (total / config.batch_size):.4f}", accuracy=f"{100 * correct / total:.4f}%")
-
-                # 正解率の計算（正解枚数 / 総枚数）
-                train_acc = 100 * correct / total
+            # 訓練データのエポック平均指標
+            train_loss = loss_sum / len(self.train_loader)
+            train_iou = (iou_sum / len(self.train_loader)) * 100
             
-            # 検証の正解率の計算
-            val_acc, val_loss = self.validate()
+            # 検証の評価（IoUと損失の計算）
+            val_iou, val_loss = self.validate()
             
-            # 学習曲線用にメモリに記録（エポック全体の平均損失）
-            avg_train_loss = loss_sum / len(self.train_loader)
-            self.train_acc_rec.append(train_acc)
-            self.val_acc_rec.append(val_acc)
-            self.train_loss_rec.append(avg_train_loss)
+            # 学習曲線用に履歴に記録
+            self.train_iou_rec.append(train_iou)
+            self.val_iou_rec.append(val_iou)
+            self.train_loss_rec.append(train_loss)
             self.val_loss_rec.append(val_loss)
             
             # 現在の学習率を記録
             current_lr = self.optim.param_groups[0]['lr']
             self.lr_rec.append(current_lr)
             
-            # スケジューラーのステップ
-            lr_scheduler.step(self.scheduler, val_acc)
+            # スケジューラーのステップ (指標として val_iou を渡す、または設定次第で val_loss)
+            lr_scheduler.step(self.scheduler, val_iou)
 
             # 結果の出力
-            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " f"訓練損失 {avg_train_loss:.4f} | 検証損失 {val_loss:.4f} | " f"学習正解率 {train_acc:.4f}% | " f"検証正解率 {val_acc:.4f}% \n" + "\033[0m")
+            print("\033[96m" + f"学習回数 {epoch+1}/{config.epochs} | " 
+                  f"訓練損失 {train_loss:.4f} | 検証損失 {val_loss:.4f} | " 
+                  f"訓練mIoU {train_iou:.2f}% | 検証mIoU {val_iou:.2f}% \n" + "\033[0m")
 
-            # Early Stopping チェック（改善なしが続いたら中断）
+            # Early Stopping チェック（検証損失の改善なしが続いたら中断）
             if self.early_stopping(val_loss):
                 stopped_early = True
                 break
 
-        # 早期終了時はファイル名に earlystop を付加
+        # 早期終了時などのファイル保存プレフィックス/サフィックス処理
         suffix = "" if stopped_early else ""
 
         # 学習モデルの保存
-        # sate_dict()でモデルの重みを保存
         model_path = f"{config.model_dir}Model-{config.epochs}-{config.batch_size}-{config.learning_rate}{suffix}.pth"
         torch.save(self.model.state_dict(), model_path)
 
-        #出力する文字を緑にして
         print(f"Model Saved " + "\033[92m" + "Successfully" + "\033[0m \n")
         
-        # 学習曲線の可視化
+        # 学習曲線の可視化 (内部のプロットもiou用に修正してください)
         self.learning_curve(suffix)
-
 
     # 検証
     def validate(self):
-        
         # 検証モード ON
         self.model.eval()
 
-        correct = 0
-        total = 0
         val_loss_sum = 0
+        val_iou_sum = 0
 
         # 勾配を計算しない
         with torch.no_grad():
-            for images, labels in self.val_loader:
+            for images, masks in self.val_loader:
                 images = images.to(self.device)
-                labels = labels.to(self.device)
+                masks = masks.to(self.device)
 
                 outputs = self.model(images)
-                loss = self.criterion(outputs, labels)
+                loss = self.criterion(outputs, masks)
                 val_loss_sum += loss.item()
                 
-                _, pred = torch.max(outputs, 1)
-
-                total += labels.size(0)
-                correct += (pred == labels).sum().item()
+                # 検証データのIoU計算
+                val_iou_sum += self._calculate_iou(outputs, masks)
                 
-        # 検証の正解率の計算（正解枚数 / 総枚数）
-        val_acc = 100 * correct / total
-        # エポック全体の平均検証損失
+        # エポック全体の平均検証指標の計算
         avg_val_loss = val_loss_sum / len(self.val_loader)
-        return val_acc, avg_val_loss
+        avg_val_iou = (val_iou_sum / len(self.val_loader)) * 100
+        return avg_val_iou, avg_val_loss
 
-
-
-    def early_stopping(self, val_loss: float, count_max: int = 5, min_delta: float = 0.0) -> bool:
-
-        # 前回の損失と今回の損失を比較する
-        # 前回より損失が低下している場合
-        if val_loss < (self._es_best_loss - min_delta):
-            
-            # 最小損失を更新
+    # Early Stopping (元のロジックを100%完全維持)
+    def early_stopping(self, val_loss: float, patience: int = 5, min_delta: float = 0.0) -> bool:
+        if val_loss < self._es_best_loss - min_delta:
             self._es_best_loss    = val_loss
-            
-            # 損失カウンターをリセット
-            self._es_counter = 0
-            
-            # その時点のモデルの最高精度スコアの重み（パラメータ）をDeepCopyで対応する
+            self._es_counter      = 0
             self._es_best_weights = copy.deepcopy(self.model.state_dict())
-            
-            
-            print(f"\033[94m * 損失率 減少 {val_loss:.4f}\033[0m")
+            print(f"\033[94m  [es] 損失率 減少 {val_loss:.4f}\033[0m")
             return False
 
-        # 損失が悪化した場合、カウンターを加算
         self._es_counter += 1
+        print(f"\033[91m  [es] 損失率 増加 ({self._es_counter}/{patience})\033[0m")
 
-        print(f"\033[91m* 損失率 増加 ({self._es_counter}/{count_max})\033[0m")
-
-        # 損失のカウンター最大値に達している場合
-        if self._es_counter > count_max:
-            
-            # 保存しておいた最高精度の重みが存在すれば、モデルに書き戻す
+        if self._es_counter >= patience:
             if self._es_best_weights is not None:
                 self.model.load_state_dict(self._es_best_weights)
-                
-                print(f"\033[91m* Bonk!. (val_loss {self._es_best_loss:.4f})\033[0m\n")
-                
-            # Trueを返して学習を終了させる
+                print(f"\033[91m  [es] stopped. Best weights restored "
+                      f"(val_loss {self._es_best_loss:.4f})\033[0m\n")
             return True
 
-        # Falseを返して学習を継続させる
         return False
 
 
