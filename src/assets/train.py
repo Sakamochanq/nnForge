@@ -187,7 +187,7 @@ class Train:
             self._es_best_loss    = val_loss
             
             # 損失カウンターをリセット
-            self._es_counter      = 0
+            self._es_counter = 0
             
             # その時点のモデルの最高精度スコアの重み（パラメータ）をDeepCopyで対応する
             self._es_best_weights = copy.deepcopy(self.model.state_dict())
