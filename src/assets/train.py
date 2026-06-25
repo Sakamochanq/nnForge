@@ -176,30 +176,46 @@ class Train:
         return val_acc, avg_val_loss
 
 
-    # Early Stopping
-    def early_stopping(self, val_loss: float, patience: int = 5, min_delta: float = 0.0) -> bool:
- 
-        if val_loss < self._es_best_loss - min_delta:
-            # 改善あり：カウンターリセット & 重みをCPUにコピー保存
+
+    def early_stopping(self, val_loss: float, count_max: int = 5, min_delta: float = 0.0) -> bool:
+
+        # 前回の損失と今回の損失を比較する
+        # 前回より損失が低下している場合
+        if val_loss < (self._es_best_loss - min_delta):
+            
+            # 最小損失を更新
             self._es_best_loss    = val_loss
+            
+            # 損失カウンターをリセット
             self._es_counter      = 0
+            
+            # その時点のモデルの最高精度スコアの重み（パラメータ）をDeepCopyで対応する
             self._es_best_weights = copy.deepcopy(self.model.state_dict())
-            print(f"\033[94m  [es] 損失率 減少 {val_loss:.4f}\033[0m")
+            
+            
+            print(f"\033[94m * 損失率 減少 {val_loss:.4f}\033[0m")
             return False
 
-        # 改善なし：カウントアップ
+        # 損失が悪化した場合、カウンターを加算
         self._es_counter += 1
-        print(f"\033[91m  [es] 損失率 増加 ({self._es_counter}/{patience})\033[0m")
 
-        if self._es_counter >= patience:
-            # patience 超過 → ベスト重みを復元して終了シグナルを返す
+        print(f"\033[91m* 損失率 増加 ({self._es_counter}/{count_max})\033[0m")
+
+        # 損失のカウンター最大値に達している場合
+        if self._es_counter > count_max:
+            
+            # 保存しておいた最高精度の重みが存在すれば、モデルに書き戻す
             if self._es_best_weights is not None:
                 self.model.load_state_dict(self._es_best_weights)
-                print(f"\033[91m  [es] stopped. Best weights restored "
-                      f"(val_loss {self._es_best_loss:.4f})\033[0m\n")
+                
+                print(f"\033[91m* Bonk!. (val_loss {self._es_best_loss:.4f})\033[0m\n")
+                
+            # Trueを返して学習を終了させる
             return True
 
+        # Falseを返して学習を継続させる
         return False
+
 
 
     # 学習曲線の描画
