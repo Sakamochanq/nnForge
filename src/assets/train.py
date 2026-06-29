@@ -193,7 +193,7 @@ class Train:
             self._es_best_weights = copy.deepcopy(self.model.state_dict())
             
             
-            print(f"\033[94m * 損失率 減少 {val_loss:.4f}\033[0m")
+            print(f"\033[94m* 損失率 減少 {val_loss:.4f}\033[0m")
             return False
 
         # 損失が悪化した場合、カウンターを加算
